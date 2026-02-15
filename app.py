@@ -2,6 +2,7 @@ import gradio as gr
 import joblib
 import pandas as pd
 import numpy as np
+from agent_tab import create_pricing_agent_tab
 
 # Load the trained model and preprocessors
 model = joblib.load('ml/artifacts/credit_model.joblib')
@@ -317,196 +318,199 @@ with gr.Blocks(theme=gr.themes.Soft(), title="CreditAI Global") as app:
     ### AI-powered credit assessment for USA and India
     """)
     
-    with gr.Row():
-        country = gr.Radio(
-            ["🇺🇸 USA", "🇮🇳 India"],
-            label="Select Country",
-            value="🇺🇸 USA",
-            interactive=True
-        )
-    
-    # ========================================
-    # USA FORM
-    # ========================================
-    with gr.Group(visible=True) as usa_form:
-        gr.Markdown("### 🇺🇸 USA Credit Application")
-        
-        with gr.Row():
-            with gr.Column():
-                usa_loan_amt = gr.Slider(1000, 40000, value=15000, step=500, 
-                                         label="💰 Loan Amount ($)")
-                usa_int_rate = gr.Slider(5, 30, value=12.5, step=0.5,
-                                        label="📊 Interest Rate (%)")
-                usa_annual_inc = gr.Number(value=65000, label="💵 Annual Income ($)")
-                usa_dti = gr.Slider(0, 50, value=18.5, step=0.5,
-                                   label="📈 Debt-to-Income Ratio (%)")
-                
-            with gr.Column():
-                usa_grade = gr.Dropdown(['A', 'B', 'C', 'D', 'E', 'F', 'G'],
-                                       value='B', label="🎯 Credit Grade")
-                usa_emp_length = gr.Dropdown([
-                    '< 1 year', '1 year', '2 years', '3 years', '4 years',
-                    '5 years', '6 years', '7 years', '8 years', '9 years', '10+ years'
-                ], value='5 years', label="💼 Employment Length")
-                usa_home = gr.Dropdown(['RENT', 'MORTGAGE', 'OWN', 'OTHER'],
-                                      value='MORTGAGE', label="🏠 Home Ownership")
-                usa_purpose = gr.Dropdown([
-                    'debt_consolidation', 'credit_card', 'home_improvement',
-                    'other', 'major_purchase', 'small_business', 'car',
-                    'medical', 'moving', 'vacation', 'house', 'wedding',
-                    'renewable_energy', 'educational'
-                ], value='debt_consolidation', label="🎯 Loan Purpose")
-        
-        gr.Markdown("### 💳 Card & Credit Information")
-        with gr.Row():
-            usa_card_type = gr.Dropdown(
-                ['Visa', 'Mastercard', 'American Express', 'Discover'],
-                value='Visa',
-                label="💳 Card Type"
-            )
-            usa_credit_history = gr.Slider(
-                0, 15, value=5, step=1,
-                label="📅 Credit History (years)"
-            )
-            usa_payment_history = gr.Dropdown([
-                'Always on time (No missed payments)',
-                'Occasional delays (1-2 late payments)',
-                'Frequent delays (3+ late payments)'
-            ], value='Always on time (No missed payments)', 
-            label="💯 Payment History")
-        
-        gr.Markdown("### 📊 Additional Credit Details")
-        with gr.Row():
-            usa_inquiries = gr.Slider(0, 10, value=1, step=1,
-                                     label="🔍 Credit Inquiries (last 6 months)")
-            usa_open_acc = gr.Slider(0, 30, value=8, step=1,
-                                    label="📂 Open Credit Accounts")
-            usa_revol_bal = gr.Number(value=12000, label="💳 Revolving Balance ($)")
-            usa_revol_util = gr.Slider(0, 100, value=45.5, step=0.5,
-                                      label="📊 Revolving Utilization (%)")
-            usa_total_acc = gr.Slider(0, 50, value=15, step=1,
-                                     label="📋 Total Credit Accounts")
-        
-        usa_submit = gr.Button("🚀 Check USA Eligibility", variant="primary", size="lg")
-    
-    # ========================================
-    # INDIA FORM
-    # ========================================
-    with gr.Group(visible=False) as india_form:
-        gr.Markdown("### 🇮🇳 India Credit Application (HDFC Credila Style)")
-        
-        with gr.Row():
-            with gr.Column():
-                india_loan_amt = gr.Slider(50000, 5000000, value=500000, step=10000,
-                                          label="💰 Loan Amount (₹)")
-                india_cibil = gr.Slider(300, 900, value=750, step=10,
-                                       label="📊 CIBIL Score")
-                india_annual_inc = gr.Number(value=800000, label="💵 Annual Income (₹)")
-                india_existing_loans = gr.Slider(0, 5, value=0, step=1,
-                                                label="📋 Existing Loans")
-                
-            with gr.Column():
-                india_city = gr.Dropdown([
-                    'Metro (Mumbai, Delhi, Bangalore)',
-                    'Tier-1 (Pune, Hyderabad, Chennai)',
-                    'Tier-2 (Jaipur, Lucknow, Kochi)',
-                    'Tier-3 (Smaller cities)'
-                ], value='Metro (Mumbai, Delhi, Bangalore)', label="🏙️ City Tier")
-                
-                india_employment = gr.Dropdown([
-                    'Salaried (MNC)', 'Salaried (Startup)',
-                    'Self-employed', 'Business Owner',
-                    'Freelancer', 'Student'
-                ], value='Salaried (MNC)', label="💼 Employment Type")
-                
-                india_purpose = gr.Dropdown([
-                    'Personal Loan', 'Education Loan', 'Home Loan',
-                    'Car Loan', 'Business Loan', 'Credit Card',
-                    'Debt Consolidation'
-                ], value='Personal Loan', label="🎯 Loan Purpose")
-        
-        gr.Markdown("### 💳 Card & Verification")
-        with gr.Row():
-            india_card_type = gr.Dropdown(
-                ['Visa', 'Mastercard', 'RuPay', 'American Express'],
-                value='Visa',
-                label="💳 Card Type"
-            )
-            india_credit_history = gr.Dropdown([
-                'New to credit (< 1 year)',
-                '1-3 years',
-                '3-5 years',
-                '5-7 years',
-                '7+ years'
-            ], value='3-5 years', label="📅 Credit History")
+    with gr.Tabs():
+        # ========================================
+        # CREDIT RISK TAB
+        # ========================================
+        with gr.Tab("💳 Credit Risk Assessment"):
+            with gr.Row():
+                country = gr.Radio(
+                    ["🇺🇸 USA", "🇮🇳 India"],
+                    label="Select Country",
+                    value="🇺🇸 USA",
+                    interactive=True
+                )
             
-            india_payment_history = gr.Dropdown([
-                'Always on time (No missed payments)',
-                'Occasional delays (1-2 late payments)',
-                'Frequent delays (3+ late payments)'
-            ], value='Always on time (No missed payments)', 
-            label="💯 Payment History")
+            # USA FORM
+            with gr.Group(visible=True) as usa_form:
+                gr.Markdown("### 🇺🇸 USA Credit Application")
+                
+                with gr.Row():
+                    with gr.Column():
+                        usa_loan_amt = gr.Slider(1000, 40000, value=15000, step=500, 
+                                                 label="💰 Loan Amount ($)")
+                        usa_int_rate = gr.Slider(5, 30, value=12.5, step=0.5,
+                                                label="📊 Interest Rate (%)")
+                        usa_annual_inc = gr.Number(value=65000, label="💵 Annual Income ($)")
+                        usa_dti = gr.Slider(0, 50, value=18.5, step=0.5,
+                                           label="📈 Debt-to-Income Ratio (%)")
+                        
+                    with gr.Column():
+                        usa_grade = gr.Dropdown(['A', 'B', 'C', 'D', 'E', 'F', 'G'],
+                                               value='B', label="🎯 Credit Grade")
+                        usa_emp_length = gr.Dropdown([
+                            '< 1 year', '1 year', '2 years', '3 years', '4 years',
+                            '5 years', '6 years', '7 years', '8 years', '9 years', '10+ years'
+                        ], value='5 years', label="💼 Employment Length")
+                        usa_home = gr.Dropdown(['RENT', 'MORTGAGE', 'OWN', 'OTHER'],
+                                              value='MORTGAGE', label="🏠 Home Ownership")
+                        usa_purpose = gr.Dropdown([
+                            'debt_consolidation', 'credit_card', 'home_improvement',
+                            'other', 'major_purchase', 'small_business', 'car',
+                            'medical', 'moving', 'vacation', 'house', 'wedding',
+                            'renewable_energy', 'educational'
+                        ], value='debt_consolidation', label="🎯 Loan Purpose")
+                
+                gr.Markdown("### 💳 Card & Credit Information")
+                with gr.Row():
+                    usa_card_type = gr.Dropdown(
+                        ['Visa', 'Mastercard', 'American Express', 'Discover'],
+                        value='Visa',
+                        label="💳 Card Type"
+                    )
+                    usa_credit_history = gr.Slider(
+                        0, 15, value=5, step=1,
+                        label="📅 Credit History (years)"
+                    )
+                    usa_payment_history = gr.Dropdown([
+                        'Always on time (No missed payments)',
+                        'Occasional delays (1-2 late payments)',
+                        'Frequent delays (3+ late payments)'
+                    ], value='Always on time (No missed payments)', 
+                    label="💯 Payment History")
+                
+                gr.Markdown("### 📊 Additional Credit Details")
+                with gr.Row():
+                    usa_inquiries = gr.Slider(0, 10, value=1, step=1,
+                                             label="🔍 Credit Inquiries (last 6 months)")
+                    usa_open_acc = gr.Slider(0, 30, value=8, step=1,
+                                            label="📂 Open Credit Accounts")
+                    usa_revol_bal = gr.Number(value=12000, label="💳 Revolving Balance ($)")
+                    usa_revol_util = gr.Slider(0, 100, value=45.5, step=0.5,
+                                              label="📊 Revolving Utilization (%)")
+                    usa_total_acc = gr.Slider(0, 50, value=15, step=1,
+                                             label="📋 Total Credit Accounts")
+                
+                usa_submit = gr.Button("🚀 Check USA Eligibility", variant="primary", size="lg")
+            
+            # INDIA FORM
+            with gr.Group(visible=False) as india_form:
+                gr.Markdown("### 🇮🇳 India Credit Application (HDFC Credila Style)")
+                
+                with gr.Row():
+                    with gr.Column():
+                        india_loan_amt = gr.Slider(50000, 5000000, value=500000, step=10000,
+                                                  label="💰 Loan Amount (₹)")
+                        india_cibil = gr.Slider(300, 900, value=750, step=10,
+                                               label="📊 CIBIL Score")
+                        india_annual_inc = gr.Number(value=800000, label="💵 Annual Income (₹)")
+                        india_existing_loans = gr.Slider(0, 5, value=0, step=1,
+                                                        label="📋 Existing Loans")
+                        
+                    with gr.Column():
+                        india_city = gr.Dropdown([
+                            'Metro (Mumbai, Delhi, Bangalore)',
+                            'Tier-1 (Pune, Hyderabad, Chennai)',
+                            'Tier-2 (Jaipur, Lucknow, Kochi)',
+                            'Tier-3 (Smaller cities)'
+                        ], value='Metro (Mumbai, Delhi, Bangalore)', label="🏙️ City Tier")
+                        
+                        india_employment = gr.Dropdown([
+                            'Salaried (MNC)', 'Salaried (Startup)',
+                            'Self-employed', 'Business Owner',
+                            'Freelancer', 'Student'
+                        ], value='Salaried (MNC)', label="💼 Employment Type")
+                        
+                        india_purpose = gr.Dropdown([
+                            'Personal Loan', 'Education Loan', 'Home Loan',
+                            'Car Loan', 'Business Loan', 'Credit Card',
+                            'Debt Consolidation'
+                        ], value='Personal Loan', label="🎯 Loan Purpose")
+                
+                gr.Markdown("### 💳 Card & Verification")
+                with gr.Row():
+                    india_card_type = gr.Dropdown(
+                        ['Visa', 'Mastercard', 'RuPay', 'American Express'],
+                        value='Visa',
+                        label="💳 Card Type"
+                    )
+                    india_credit_history = gr.Dropdown([
+                        'New to credit (< 1 year)',
+                        '1-3 years',
+                        '3-5 years',
+                        '5-7 years',
+                        '7+ years'
+                    ], value='3-5 years', label="📅 Credit History")
+                    
+                    india_payment_history = gr.Dropdown([
+                        'Always on time (No missed payments)',
+                        'Occasional delays (1-2 late payments)',
+                        'Frequent delays (3+ late payments)'
+                    ], value='Always on time (No missed payments)', 
+                    label="💯 Payment History")
+                
+                with gr.Row():
+                    india_pan = gr.Checkbox(value=True, label="✅ PAN Card Verified")
+                    india_aadhaar = gr.Checkbox(value=True, label="✅ Aadhaar Verified")
+                
+                india_submit = gr.Button("🚀 Check India Eligibility", variant="primary", size="lg")
+            
+            # RESULTS (Shared)
+            gr.Markdown("---")
+            gr.Markdown("### 📊 Assessment Results")
+            
+            with gr.Row():
+                result_decision = gr.Textbox(label="Decision", scale=2)
+                result_probability = gr.Textbox(label="Default Probability", scale=1)
+            
+            with gr.Row():
+                result_risk = gr.Textbox(label="Risk Level", scale=1)
+                result_limit = gr.Textbox(label="Credit Limit", scale=1)
+                result_apr = gr.Textbox(label="Recommended APR", scale=1)
+            
+            result_message = gr.Textbox(label="💬 Assessment Details", scale=2)
+            
+            # LOGIC
+            def toggle_country(country):
+                if country == "🇺🇸 USA":
+                    return gr.update(visible=True), gr.update(visible=False)
+                else:
+                    return gr.update(visible=False), gr.update(visible=True)
+            
+            country.change(
+                fn=toggle_country,
+                inputs=[country],
+                outputs=[usa_form, india_form]
+            )
+            
+            usa_submit.click(
+                fn=predict_usa,
+                inputs=[
+                    usa_loan_amt, usa_int_rate, usa_grade, usa_emp_length, usa_home,
+                    usa_annual_inc, usa_purpose, usa_dti, usa_inquiries, usa_open_acc,
+                    usa_revol_bal, usa_revol_util, usa_total_acc,
+                    usa_card_type, usa_credit_history, usa_payment_history
+                ],
+                outputs=[result_decision, result_probability, result_risk, 
+                        result_limit, result_apr, result_message]
+            )
+            
+            india_submit.click(
+                fn=predict_india,
+                inputs=[
+                    india_loan_amt, india_cibil, india_city, india_annual_inc,
+                    india_employment, india_purpose, india_existing_loans, india_pan,
+                    india_aadhaar, india_card_type, india_credit_history, india_payment_history
+                ],
+                outputs=[result_decision, result_probability, result_risk, 
+                        result_limit, result_apr, result_message]
+            )
         
-        with gr.Row():
-            india_pan = gr.Checkbox(value=True, label="✅ PAN Card Verified")
-            india_aadhaar = gr.Checkbox(value=True, label="✅ Aadhaar Verified")
-        
-        india_submit = gr.Button("🚀 Check India Eligibility", variant="primary", size="lg")
-    
-    # ========================================
-    # RESULTS (Shared)
-    # ========================================
-    gr.Markdown("---")
-    gr.Markdown("### 📊 Assessment Results")
-    
-    with gr.Row():
-        result_decision = gr.Textbox(label="Decision", scale=2)
-        result_probability = gr.Textbox(label="Default Probability", scale=1)
-    
-    with gr.Row():
-        result_risk = gr.Textbox(label="Risk Level", scale=1)
-        result_limit = gr.Textbox(label="Credit Limit", scale=1)
-        result_apr = gr.Textbox(label="Recommended APR", scale=1)
-    
-    result_message = gr.Textbox(label="💬 Assessment Details", scale=2)
-    
-    # ========================================
-    # LOGIC
-    # ========================================
-    def toggle_country(country):
-        if country == "🇺🇸 USA":
-            return gr.update(visible=True), gr.update(visible=False)
-        else:
-            return gr.update(visible=False), gr.update(visible=True)
-    
-    country.change(
-        fn=toggle_country,
-        inputs=[country],
-        outputs=[usa_form, india_form]
-    )
-    
-    usa_submit.click(
-        fn=predict_usa,
-        inputs=[
-            usa_loan_amt, usa_int_rate, usa_grade, usa_emp_length, usa_home,
-            usa_annual_inc, usa_purpose, usa_dti, usa_inquiries, usa_open_acc,
-            usa_revol_bal, usa_revol_util, usa_total_acc,
-            usa_card_type, usa_credit_history, usa_payment_history
-        ],
-        outputs=[result_decision, result_probability, result_risk, 
-                result_limit, result_apr, result_message]
-    )
-    
-    india_submit.click(
-        fn=predict_india,
-        inputs=[
-            india_loan_amt, india_cibil, india_city, india_annual_inc,
-            india_employment, india_purpose, india_existing_loans, india_pan,
-            india_aadhaar, india_card_type, india_credit_history, india_payment_history
-        ],
-        outputs=[result_decision, result_probability, result_risk, 
-                result_limit, result_apr, result_message]
-    )
+        # ========================================
+        # AI PRICING AGENT TAB
+        # ========================================
+        with gr.Tab("🤖 AI Pricing Agent"):
+            create_pricing_agent_tab()
     
     gr.Markdown("""
     ---
@@ -518,14 +522,17 @@ with gr.Blocks(theme=gr.themes.Soft(), title="CreditAI Global") as app:
     **📊 Features:** 17+ key financial indicators analyzed  
     **💳 Card Types:** Visa, Mastercard, American Express, Discover (USA) | Visa, Mastercard, RuPay, Amex (India)
     
-    **New Features:**
+    **Features:**
     - 💳 Card type selection affects credit limits and rates
     - 📅 Credit history length impacts approval decisions
     - 💯 Payment history significantly affects risk assessment
     - ✅ Aadhaar & PAN verification for India (affects rates)
+    - 🤖 **AI Pricing Agent** - Dynamic interest rate optimization with RL
     
-    *Powered by Random Forest ML Algorithm*
+    *Powered by Random Forest ML Algorithm + Dynamic Pricing Agent*
     """)
 
 if __name__ == "__main__":
-    app.launch(share=True)
+    import os
+    port = int(os.environ.get("PORT", 7860))
+    app.launch(server_name="0.0.0.0", server_port=port, share=False)
