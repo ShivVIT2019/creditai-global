@@ -6,3 +6,5 @@ ml/data/*.csv
 ml/data/*.zip
 *.csv
 *.zip
+ml/data/*.csv.gz
+ml/data/*.csv
