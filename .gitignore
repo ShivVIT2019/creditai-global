@@ -8,3 +8,7 @@ ml/data/*.zip
 *.zip
 ml/data/*.csv.gz
 ml/data/*.csv
+# Exclude from HF Space push (not needed at runtime)
+ml/data/
+ml/notebooks/
+README.md.bak

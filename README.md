@@ -1,3 +1,15 @@
+---
+title: CreditAI Global
+emoji: 💳
+colorFrom: blue
+colorTo: green
+sdk: gradio
+sdk_version: 4.31.0
+app_file: app.py
+pinned: false
+license: mit
+---
+
 # 💳 CreditAI Global - Smart Credit Approval System
 
 AI-powered credit assessment system for **USA** 🇺🇸 and **India** 🇮🇳
