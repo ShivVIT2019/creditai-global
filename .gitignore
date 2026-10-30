@@ -12,3 +12,5 @@ ml/data/*.csv
 ml/data/
 ml/notebooks/
 README.md.bak
+app.py.bak-pre-batch-tab
+*.bak-*

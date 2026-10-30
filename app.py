@@ -1,4 +1,5 @@
 import gradio as gr
+from batch_tab import build_batch_tab
 import joblib
 import pandas as pd
 import numpy as np
@@ -511,6 +512,12 @@ with gr.Blocks(theme=gr.themes.Soft(), title="CreditAI Global") as app:
         # ========================================
         with gr.Tab("🤖 AI Pricing Agent"):
             create_pricing_agent_tab()
+
+        # ========================================
+        # BATCH UNDERWRITING TAB (MPWR-inspired)
+        # ========================================
+        with gr.Tab("📦 Batch Underwriting"):
+            build_batch_tab()
     
     gr.Markdown("""
     ---
