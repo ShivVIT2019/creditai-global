@@ -11,9 +11,9 @@ pinned: false
 license: mit
 ---
 
-# 💳 CreditAI Global — Smart Credit Approval System
+# 💳 CreditAI Global — Credit Approval System
 
-AI-powered dual-market credit assessment system for **USA 🇺🇸** and **India 🇮🇳**, with a built-in AI pricing agent.
+Gradio app for USA 🇺🇸 and India 🇮🇳 credit assessment, with an AI pricing agent and a batch underwriting loop.
 
 🔗 **Live Demo:** [huggingface.co/spaces/sivasaiatchyut/creditai-global](https://huggingface.co/spaces/sivasaiatchyut/creditai-global)
 
@@ -22,30 +22,34 @@ AI-powered dual-market credit assessment system for **USA 🇺🇸** and **India
 ## 🎥 Walkthrough
 
 ### USA Credit Application
-![USA Credit Application](./docs/images/1.png)
+![USA Credit Application](docs/images/1.png)
 
 ### USA — Full Form with Prediction
-![USA Full View](./docs/images/3.png)
+![USA Full View](docs/images/3.png)
 
 ### USA — Assessment Result (Approved, Medium Risk)
-![USA Assessment Detail](./docs/images/4.png)
+![USA Assessment Detail](docs/images/4.png)
 
 ### India Credit Application (HDFC Credila Style)
-![India Credit Application](./docs/images/5.png)
+![India Credit Application](docs/images/5.png)
 
 ### India — Assessment Result (Approved, ₹52,954 Credit Limit)
-![India Assessment Detail](./docs/images/2.png)
+![India Assessment Detail](docs/images/2.png)
 
 ---
 
 ## 🎯 What It Does
 
-| Market | Scoring System | Verification | Supported Cards |
-|---|---|---|---|
-| 🇺🇸 USA | FICO + Random Forest (86.5% AUC-ROC) | SSN | Visa, Mastercard, Amex, Discover |
-| 🇮🇳 India | CIBIL + regional risk | PAN & Aadhaar | Visa, Mastercard, RuPay, Amex |
+Three tabs, all served by one Gradio app:
 
-**AI Pricing Agent:** multi-factor weighted optimization (risk 60% / market 30% / profit 10%) → applicant-specific credit limits and interest rates with explainable reasoning.
+| Tab | What it does | Where the decision comes from |
+|---|---|---|
+| 💳 Credit Risk Assessment | Scores a single applicant (USA or India form) | Random Forest from `ml/artifacts/credit_model.joblib` + rule-based grade adjustment, probability scaling, and threshold-based decision |
+| 🤖 AI Pricing Agent | Returns a rate recommendation with risk / market / profit breakdown | `DynamicPricingAgent.calculate_rate()` in `agent/pricing_agent.py` — weights and internal logic not documented in this README |
+| 📦 Batch Underwriting | Processes a JSON array of records through validate → features → score → fraud → policy, and writes an audit log | `run_batch()` in `underwriting/batch_loop.py` — scoring method not documented in this README; the UI text calls it a "rule-weighted probability (replaceable with ML model)" |
+
+**USA inputs:** Credit Grade (A–G), DTI, utilization, employment length, payment history, revolving balance, open accounts, etc. There is **no FICO or SSN input field**.
+**India inputs:** CIBIL (300–900), city tier, PAN and Aadhaar verification checkboxes, employment type, loan purpose, etc. The India path translates its inputs (CIBIL → grade letter, city tier → home-ownership string, INR → USD at hardcoded 83) and then calls the USA scoring function.
 
 ---
 
@@ -53,32 +57,58 @@ AI-powered dual-market credit assessment system for **USA 🇺🇸** and **India
 
 ```mermaid
 flowchart TD
-    UI[Gradio UI<br/>Tabs: Credit Risk - AI Pricing Agent] --> ROUTE{Select Country}
-    ROUTE -->|USA| USA[USA Pipeline<br/>Random Forest - 2.2M loans]
-    ROUTE -->|India| IND[India Pipeline<br/>CIBIL + Regional Tiers]
-    USA --> AGENT[AI Pricing Agent<br/>Risk 60% - Market 30% - Profit 10%]
-    IND --> AGENT
-    AGENT --> OUT[Decision + Credit Limit + APR + Explanation]
+    UI[Gradio UI — 3 tabs]
+    UI --> T1[Credit Risk Assessment]
+    UI --> T2[AI Pricing Agent]
+    UI --> T3[Batch Underwriting]
+
+    T1 --> ROUTE{USA or India form}
+    ROUTE -->|USA| USA[predict_usa in app.py<br/>Random Forest from ml/artifacts/<br/>+ rule-based post-processing]
+    ROUTE -->|India| IND[predict_india in app.py<br/>CIBIL and city-tier mapping<br/>then calls predict_usa]
+    USA --> OUT1[Decision + credit limit + APR]
+    IND --> OUT1
+
+    T2 --> AGENT[DynamicPricingAgent<br/>agent/pricing_agent.py<br/>internals not documented in this README]
+    AGENT --> OUT2[Rate breakdown + reasoning text]
+
+    T3 --> BATCH[run_batch<br/>underwriting/batch_loop.py<br/>validate → features → score → fraud → policy → audit log]
+    BATCH --> OUT3[Decisions table + /tmp/audit_log.jsonl]
 ```
 
 ---
 
 ## 🧠 Technology Stack
 
-- **ML:** scikit-learn (Random Forest Classifier), joblib
+- **ML:** scikit-learn (Random Forest classifier), joblib
+- **Validation:** Pydantic (used in the batch underwriting pipeline)
 - **UI:** Gradio 4.31.0
-- **Data:** 2.2M Lending Club loans (training), pandas, numpy
 - **Deployment:** Hugging Face Spaces (free tier, Python 3.11)
 - **Model artifacts:** stored via Git LFS
 
 ---
 
-## 📊 Model Performance
+## 📊 Model
 
-- **ROC-AUC:** 86.5%
-- **Training set:** 2.2M loan records from Lending Club
-- **Features:** 17+ engineered features (DTI, utilization, delinquency count, account age, inquiries, bankruptcy indicators)
-- **Preprocessing pipeline:** imputer + scaler, persisted via joblib
+- **Algorithm:** scikit-learn Random Forest classifier, loaded at startup from `ml/artifacts/credit_model.joblib`.
+- **Preprocessing:** imputer + scaler persisted via joblib in `ml/artifacts/`, loaded alongside the model.
+- **Features used at inference (17):** `loan_amnt`, `int_rate`, `installment`, `grade`, `emp_length`, `home_ownership`, `annual_inc`, `verification_status`, `purpose`, `dti`, `delinq_2yrs`, `inq_last_6mths`, `open_acc`, `pub_rec`, `revol_bal`, `revol_util`, `total_acc`.
+- **Decision layer:** the model's output probability is scaled by payment-history rules (×0.8 for always-on-time, ×1.3 for frequent delays) and then thresholded (<0.3 approved / low risk, <0.5 approved / medium risk, otherwise rejected / high risk) inside `predict_usa` in `app.py`.
+- **Training data, training script, and evaluation metrics:** not documented in this repository.
+
+---
+
+## 📦 Batch Underwriting Pipeline
+
+The `📦 Batch Underwriting` tab takes a JSON array of records (prefilled with a 3-record sample) and runs each one through:
+
+1. **Validation** — Pydantic schema in `underwriting/validator.py`.
+2. **Feature engineering** — `underwriting/features.py` (DTI buckets, utilization tiers, thin-file flag, loan-to-income ratio).
+3. **Risk scoring** — see `underwriting/batch_loop.py`. The UI describes this as a "transparent rule-weighted probability (replaceable with ML model)".
+4. **Fraud checks** — deterministic rules in `underwriting/fraud_detector.py` (abnormal amount, high velocity, thin-file + high ask, suspicious utilization, prior bankruptcy).
+5. **Policy decision** — priority-ordered rules in `underwriting/policy_engine.py` (bankruptcy auto-decline → high-risk decline → fraud flags to review → medium risk to review → thin-file to review → default approve).
+6. **Audit log** — JSON Lines written to `/tmp/audit_log.jsonl` by `underwriting/audit_logger.py`, offered as a download in the UI.
+
+**Record schema (12 fields):** `application_id`, `country`, `loan_amount`, `annual_income`, `dti_ratio`, `credit_history_years`, `open_credit_accounts`, `revolving_balance`, `revolving_utilization`, `total_credit_accounts`, `credit_inquiries_6mo`, `bankruptcy_history`.
 
 ---
 
@@ -91,26 +121,30 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Open http://localhost:7860 in your browser.
+Open [http://localhost:7860](http://localhost:7860) in your browser.
 
 ---
 
 ## 📦 Project Structure
 creditai-global/
-├── app.py # Gradio entry point
-├── agent_tab.py # AI pricing agent UI
-├── agent/ # Pricing agent logic
-├── ml/
-│ └── artifacts/ # Trained model + preprocessors (Git LFS)
+├── app.py # Gradio entry point; defines Tab 1 (Credit Risk) inline
+├── agent_tab.py # Tab 2 (AI Pricing Agent) UI
+├── batch_tab.py # Tab 3 (Batch Underwriting) UI
+├── agent/ # DynamicPricingAgent implementation
+├── underwriting/ # Batch pipeline: validator, features, fraud_detector,
+│ # policy_engine, audit_logger, batch_loop
+├── ml/artifacts/ # Random Forest + imputer + scaler + feature_names (Git LFS)
 ├── docs/images/ # Screenshots for README
 ├── requirements.txt
+├── Dockerfile
+├── DEPLOYMENT.md
 └── README.md
 
 ---
 
 ## 🌐 Deployment Notes
 
-Deployed on **Hugging Face Spaces** (free tier) after migrating from Google Cloud Run. Full deployment walkthrough: [`DEPLOYMENT.md`](./DEPLOYMENT.md).
+Deployed on **Hugging Face Spaces** (free tier) after migrating from Google Cloud Run. Full deployment walkthrough, including the failed attempts and Git LFS migration: [`DEPLOYMENT.md`](DEPLOYMENT.md).
 
 ---
 
@@ -118,6 +152,7 @@ Deployed on **Hugging Face Spaces** (free tier) after migrating from Google Clou
 
 **Sivasai Atchyut Akella** (Atchu)
 MS Computer Science (AI concentration), Binghamton University
+
 - 🔗 Portfolio: [portfolio-nine-rho-36.vercel.app](https://portfolio-nine-rho-36.vercel.app)
 - 💼 LinkedIn: [linkedin.com/in/atchyut](https://linkedin.com/in/atchyut)
 - 💻 GitHub: [@ShivVIT2019](https://github.com/ShivVIT2019)
