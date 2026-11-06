@@ -93,7 +93,10 @@ flowchart TD
 - **Preprocessing:** imputer + scaler persisted via joblib in `ml/artifacts/`, loaded alongside the model.
 - **Features used at inference (17):** `loan_amnt`, `int_rate`, `installment`, `grade`, `emp_length`, `home_ownership`, `annual_inc`, `verification_status`, `purpose`, `dti`, `delinq_2yrs`, `inq_last_6mths`, `open_acc`, `pub_rec`, `revol_bal`, `revol_util`, `total_acc`.
 - **Decision layer:** the model's output probability is scaled by payment-history rules (×0.8 for always-on-time, ×1.3 for frequent delays) and then thresholded (<0.3 approved / low risk, <0.5 approved / medium risk, otherwise rejected / high risk) inside `predict_usa` in `app.py`.
-- **Training data, training script, and evaluation metrics:** not documented in this repository.
+- **Training data:** 100,000 rows sampled from the Lending Club 2007–2018 "accepted loans" dataset on Kaggle (~2.26M rows total). The `nrows=100000` cap is set in `ml/notebooks/1_lending_club_train.ipynb` line 367.
+- **Training script:** `ml/notebooks/1_lending_club_train.ipynb` (not shipped in the deployed Space; kept locally).
+- **Evaluation metric:** ROC-AUC **0.7042** on a 20,000-row held-out test set (80/20 split, stratified). Saved to `ml/artifacts/model_info.joblib` as `{'roc_auc': 0.7042, 'training_samples': 80000, 'n_features': 17, 'model_type': 'RandomForestClassifier'}`.
+- **Known limitation:** the inference path in `app.py` loads `imputer.joblib` and `scaler.joblib` at startup but never applies them — raw form values go directly to `model.predict_proba`. The pickled preprocessors are currently unused at inference time.
 
 ---
 
