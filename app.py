@@ -5,11 +5,10 @@ import pandas as pd
 import numpy as np
 from agent_tab import create_pricing_agent_tab
 
-# Load the trained model and preprocessors
-model = joblib.load('ml/artifacts/credit_model.joblib')
-imputer = joblib.load('ml/artifacts/imputer.joblib')
-scaler = joblib.load('ml/artifacts/scaler.joblib')
-features = joblib.load('ml/artifacts/feature_names.joblib')
+from ml.scoring import build_usa_frame, load_pipeline
+
+# Load the trained pipeline (imputation + category encoding + Random Forest)
+pipeline = load_pipeline()
 
 # ============================================================
 # USA PREDICTION FUNCTION
@@ -22,16 +21,6 @@ def predict_usa(loan_amount, interest_rate, grade, emp_length, home_ownership,
     
     # Map inputs to encoded values
     grade_map = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4, 'F': 5, 'G': 6}
-    emp_map = {'< 1 year': 0, '1 year': 1, '2 years': 2, '3 years': 3, 
-               '4 years': 4, '5 years': 5, '6 years': 6, '7 years': 7,
-               '8 years': 8, '9 years': 9, '10+ years': 10}
-    home_map = {'RENT': 0, 'MORTGAGE': 1, 'OWN': 2, 'OTHER': 3}
-    purpose_map = {
-        'debt_consolidation': 0, 'credit_card': 1, 'home_improvement': 2,
-        'other': 3, 'major_purchase': 4, 'small_business': 5,
-        'car': 6, 'medical': 7, 'moving': 8, 'vacation': 9,
-        'house': 10, 'wedding': 11, 'renewable_energy': 12, 'educational': 13
-    }
     
     # Adjust grade based on payment history and credit history
     grade_value = grade_map.get(grade, 1)
@@ -69,32 +58,27 @@ def predict_usa(loan_amount, interest_rate, grade, emp_length, home_ownership,
     else:
         installment = loan_amount / n_payments
     
-    # Create input dictionary
-    input_data = {
-        'loan_amnt': loan_amount,
-        'int_rate': interest_rate,
-        'installment': installment,
-        'grade': int(grade_value),
-        'emp_length': emp_map.get(emp_length, 5),
-        'home_ownership': home_map.get(home_ownership, 0),
-        'annual_inc': annual_income,
-        'verification_status': 1,
-        'purpose': purpose_map.get(purpose, 0),
-        'dti': dti,
-        'delinq_2yrs': 0 if payment_history == "Always on time (No missed payments)" else 1,
-        'inq_last_6mths': credit_inquiries,
-        'open_acc': open_accounts,
-        'pub_rec': 0,
-        'revol_bal': revolving_balance,
-        'revol_util': revolving_util,
-        'total_acc': total_accounts
-    }
-    
-    # Convert to DataFrame
-    input_df = pd.DataFrame([input_data])
-    
+    # Build the model input from raw values; the pipeline applies its own preprocessing
+    input_df = build_usa_frame(
+        loan_amount=loan_amount,
+        interest_rate=interest_rate,
+        installment=installment,
+        grade_value=grade_value,
+        emp_length=emp_length,
+        home_ownership=home_ownership,
+        annual_income=annual_income,
+        purpose=purpose,
+        dti=dti,
+        delinq_2yrs=0 if payment_history == "Always on time (No missed payments)" else 1,
+        credit_inquiries=credit_inquiries,
+        open_accounts=open_accounts,
+        revolving_balance=revolving_balance,
+        revolving_util=revolving_util,
+        total_accounts=total_accounts,
+    )
+
     # Predict
-    probability = model.predict_proba(input_df)[0, 1]
+    probability = pipeline.predict_proba(input_df)[0, 1]
     
     # Adjust probability based on payment history
     if payment_history == "Always on time (No missed payments)":
