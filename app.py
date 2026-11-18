@@ -507,10 +507,10 @@ with gr.Blocks(theme=gr.themes.Soft(), title="CreditAI Global") as app:
     ---
     ### 📝 About CreditAI Global
     
-    **🇺🇸 USA Model:** Trained on 2.2M real loans from Lending Club (2007-2018)  
+    **🇺🇸 USA Model:** Random Forest trained on 100K loans sampled from Lending Club 2007-2018 (~2.26M total)  
     **🇮🇳 India Model:** Adapted from USA model with Indian credit parameters  
-    **🎯 Accuracy:** 86%+ ROC-AUC on test data  
-    **📊 Features:** 17+ key financial indicators analyzed  
+    **🎯 Accuracy:** 0.70 ROC-AUC on a 20K held-out test set  
+    **📊 Features:** 17 financial features analyzed  
     **💳 Card Types:** Visa, Mastercard, American Express, Discover (USA) | Visa, Mastercard, RuPay, Amex (India)
     
     **Features:**
